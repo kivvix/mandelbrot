@@ -1,0 +1,120 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Mandelbrot set</title>
+    <style>
+      #set {
+        width:  min(100vw,100vh);
+        height: min(100vw,100vh);
+        margin: 0 auto;
+      }
+      
+      div {
+        display: grid;
+        grid-template-columns: 50% 50%;
+        grid-template-rows: 50% 50%;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="set" data-x="0" data-y="0" data-len="2.0" ></div>
+
+    <script type='text/javascript'>
+
+      var Module = {
+        preRun: [],
+        postRun: [],
+        print: (function() {
+          var element = document.getElementById('output');
+          if (element) element.value = ''; // clear browser cache
+          return function(text) {
+            if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+            // These replacements are necessary if you render to raw HTML
+            //text = text.replace(/&/g, "&amp;");
+            //text = text.replace(/</g, "&lt;");
+            //text = text.replace(/>/g, "&gt;");
+            //text = text.replace('\n', '<br>', 'g');
+            console.log(text);
+            if (element) {
+              element.value += text + "\n";
+              element.scrollTop = element.scrollHeight; // focus on bottom
+            }
+          };
+        })(),
+        setStatus: function(text) {
+          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+          if (text === Module.setStatus.last.text) return;
+          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+          var now = Date.now();
+          if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
+          if (m) {
+            text = m[1];
+          } else {
+          }
+        },
+        totalDependencies: 0,
+        monitorRunDependencies: function(left) {
+          this.totalDependencies = Math.max(this.totalDependencies, left);
+          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+        }
+      };
+      Module.setStatus('Downloading...');
+      window.onerror = function() {
+        Module.setStatus('Exception thrown, see JavaScript console');
+        Module.setStatus = function(text) {
+          if (text) console.error('[post-exception status] ' + text);
+        };
+      };
+    </script>
+    {{{ SCRIPT }}}
+
+    <script>
+      let f = undefined;
+      function split (ev) {
+        if ( f === undefined ) {
+          f = Module.cwrap('mandelbrot','number',['number','number']);
+        }
+
+        let d0 = document.createElement("div");
+        let d1 = document.createElement("div");
+        let d2 = document.createElement("div");
+        let d3 = document.createElement("div");
+        
+        let x = parseFloat(ev.target.getAttribute('data-x'));
+        let y = parseFloat(ev.target.getAttribute('data-y'));
+        let l = parseFloat(ev.target.getAttribute('data-len'));
+      
+        d0.setAttribute('data-x', x-0.5*l ); d0.setAttribute('data-y', y+0.5*l ); d0.setAttribute('data-len',0.5*l);
+        d1.setAttribute('data-x', x+0.5*l ); d1.setAttribute('data-y', y+0.5*l ); d1.setAttribute('data-len',0.5*l);
+        d2.setAttribute('data-x', x-0.5*l ); d2.setAttribute('data-y', y-0.5*l ); d2.setAttribute('data-len',0.5*l);
+        d3.setAttribute('data-x', x+0.5*l ); d3.setAttribute('data-y', y-0.5*l ); d3.setAttribute('data-len',0.5*l);
+      
+        let L = +document.getElementById("set").getAttribute('data-len');
+        [d0,d1,d2,d3].forEach( d => {
+          d.addEventListener('mouseover',split,{'once':true});
+      
+          let x = parseFloat(d.getAttribute('data-x'));
+          let y = parseFloat(d.getAttribute('data-y'));
+      
+          //let t = 180.0/Math.PI * ((x > 0)? Math.atan(y/x) : Math.atan(y/x) + Math.PI);
+      
+          //d.style.background = "hsl("+ t +"deg, "+((x+0.5*L)*50)+"%, "+((y+0.5*L)*50)+"% )"
+          //let z = Module.ccall('mandelbrot','number',['number','number'],[ x,y ])
+          let z = f( x,y )
+          let color = (z <= 1.0)? "hsl(0deg,0%,0%)" : "hsl("+((z%100)*3.6)+"deg,50%,60%)";
+          d.style.background = color;
+
+          ev.target.appendChild(d);
+        });
+      }
+
+      let set = document.getElementById("set");
+      set.addEventListener('mouseover',split,{'once':true});
+    </script>
+  </body>
+</html>
